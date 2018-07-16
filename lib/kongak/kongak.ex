@@ -4,8 +4,7 @@ defmodule Kongak do
   alias Kongak.Application
   alias Kongak.Cache
   alias Kongak.Config
-  alias Kongak.Api.Processor, as: Apis
-  alias Kongak.Parser
+  alias Kongak.Processor
 
   def apply(args) do
     Application.start(nil, nil)
@@ -13,10 +12,7 @@ defmodule Kongak do
 
     with {:ok, config} <- Config.parse(config) do
       Cache.set_config(config)
-
-      config
-      |> Parser.parse_apis()
-      |> Apis.create_or_update_apis()
+      Processor.process_apis(config)
     else
       {:error, reason} -> error(reason)
     end

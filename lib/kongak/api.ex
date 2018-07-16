@@ -1,9 +1,11 @@
 defmodule Kongak.Api do
   @moduledoc false
 
-  defstruct [:name, :plugins, :attributes]
+  @derive {Jason.Encoder, except: [:plugins]}
 
-  @attributes ~w(
+  defstruct ~w(
+    name
+    plugins
     hosts
     methods
     strip_uri
@@ -16,7 +18,5 @@ defmodule Kongak.Api do
     upstream_read_timeout
     https_only
     http_if_terminated
-  )
-
-  def attributes, do: @attributes
+  )a
 end

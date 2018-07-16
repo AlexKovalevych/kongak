@@ -3,14 +3,17 @@ defmodule Kongak.Config do
   Config module
   """
 
-  defstruct [:host, :port, :path, :data]
+  alias Kongak.Api
+  alias Kongak.Plugin
+
+  defstruct [:host, :port, :path, :data, :apis]
 
   @doc """
   Yaml supported only
   """
   def parse(%__MODULE__{path: path} = config) do
     with {:ok, data} <- YamlElixir.read_from_file(path) do
-      {:ok, %{config | data: data}}
+      {:ok, %{config | apis: parse_apis(data)}}
     end
   end
 
@@ -19,5 +22,23 @@ defmodule Kongak.Config do
       nil -> {:error, nil}
       _ -> if File.exists?(path), do: :ok, else: {:error, "File doesn't exist"}
     end
+  end
+
+  def parse_apis(data) do
+    data
+    |> Map.get("apis", [])
+    |> Enum.map(fn api ->
+      plugins = Enum.map(Map.get(api, "plugins", []), &parse_plugin/1)
+
+      Api
+      |> create_struct(api)
+      |> Map.put(:plugins, plugins)
+    end)
+  end
+
+  def parse_plugin(data), do: create_struct(Plugin, data)
+
+  defp create_struct(name, data) do
+    struct(name, Enum.map(data, fn {k, v} -> {String.to_atom(k), v} end))
   end
 end
