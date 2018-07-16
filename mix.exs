@@ -15,10 +15,18 @@ defmodule Kongak.MixProject do
     [main_module: Kongak.CLI]
   end
 
+  def application do
+    [
+      extra_applications: [:logger]
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:bunt, "~> 0.2.0"}
+      {:yaml_elixir, "~> 2.1"},
+      {:httpoison, "~> 1.2"},
+      {:jason, "~> 1.1"}
     ]
   end
 end

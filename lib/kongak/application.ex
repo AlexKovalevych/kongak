@@ -5,11 +5,12 @@ defmodule Kongak.Application do
 
   use Application
 
-  def start(_type, _args) do
+  def start(_, _) do
+    import Supervisor.Spec, warn: false
     # List all child processes to be supervised
     children = [
       # Starts a worker by calling: Kongak.Worker.start_link(arg)
-      # {Kongak.Worker, arg},
+      worker(Kongak.Cache, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

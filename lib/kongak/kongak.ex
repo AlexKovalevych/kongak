@@ -1,18 +1,38 @@
 defmodule Kongak do
   @moduledoc false
 
+  alias Kongak.Application
+  alias Kongak.Cache
+  alias Kongak.Config
+  alias Kongak.Api.Processor, as: Apis
+  alias Kongak.Parser
+
   def apply(args) do
-    parse_args(OptionParser.parse(args, switches: [host: :string, port: :integer, path: :string]))
+    Application.start(nil, nil)
+    {:ok, config} = parse_args(OptionParser.parse(args, switches: [host: :string, port: :integer, path: :string]))
+
+    with {:ok, config} <- Config.parse(config) do
+      Cache.set_config(config)
+
+      config
+      |> Parser.parse_apis()
+      |> Apis.create_or_update_apis()
+    else
+      {:error, reason} -> error(reason)
+    end
   end
 
   defp parse_args({parsed, [], []}) do
-    host = Keyword.get(parsed, :host, "localhost")
-    port = Keyword.get(parsed, :port, "8001")
-    path = Keyword.get(parsed, :path)
+    config = %Config{
+      host: Keyword.get(parsed, :host, "localhost"),
+      port: Keyword.get(parsed, :port, "8001"),
+      path: Keyword.get(parsed, :path)
+    }
 
-    case path do
-      nil -> usage(:apply)
-      _ -> if File.exists?(path), do: :ok, else: error("File doesn't exist")
+    case Config.validate_path(config) do
+      :ok -> {:ok, config}
+      {:error, nil} -> usage(:apply)
+      {:error, msg} -> error(msg)
     end
   end
 
@@ -54,7 +74,10 @@ defmodule Kongak do
   end
 
   defp error(msg) do
-    IO.puts(msg)
+    [:red, :bright, msg]
+    |> IO.ANSI.format(true)
+    |> IO.puts()
+
     System.halt(1)
   end
 end
