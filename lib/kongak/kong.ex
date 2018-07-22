@@ -63,6 +63,10 @@ defmodule Kongak.Kong do
     patch!("/apis/#{name}", Jason.encode!(api))
   end
 
+  def update(%Plugin{} = plugin, plugin_id) do
+    patch!("/plugins/#{plugin_id}", Jason.encode!(plugin))
+  end
+
   def update(%Api{name: name}, %Plugin{} = plugin, plugin_id) do
     patch!("/apis/#{name}/plugins/#{plugin_id}", Jason.encode!(plugin))
   end

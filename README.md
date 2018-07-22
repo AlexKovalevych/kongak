@@ -10,7 +10,8 @@
 - [x] api plugins CRUD operations
 - [ ] consumers
 - [ ] certificates
-- [ ] global plugins
+- [ ] upstreams
+- [x] global plugins
 
 ## Usage
 

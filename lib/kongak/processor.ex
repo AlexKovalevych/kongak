@@ -6,36 +6,53 @@ defmodule Kongak.Processor do
   alias Kongak.Api
   alias Kongak.Config
   alias Kongak.Kong
+  alias Kongak.Plugin
+  alias Kongak.Server
 
-  def process_apis(%Config{apis: apis}) do
-    current_apis = Kong.list(:api)
-    current_plugins = Kong.list(:plugin)
-    delete_apis(current_apis, apis)
-    create_apis(current_apis, current_plugins, apis)
-    update_apis(current_apis, current_plugins, apis)
+  def process_apis(%Config{apis: apis}, %Server{} = server) do
+    delete_apis(server, apis)
+    create_apis(server, apis)
+    update_apis(server, apis)
   end
 
-  defp create_apis(current_apis, current_plugins, new_apis) do
-    new_apis
+  def process_plugins(%Config{plugins: plugins}, %Server{} = server) do
+    delete_plugins(server, plugins)
+    create_plugins(server, plugins)
+    update_plugins(server, plugins)
+  end
+
+  defp delete_apis(%Server{apis: server_apis}, apis) do
+    server_apis
+    |> Enum.map(fn server_api ->
+      name = server_api["name"]
+
+      unless Enum.find(apis, &(Map.get(&1, :name) == name)) do
+        Kong.delete_api(name)
+      end
+    end)
+  end
+
+  defp create_apis(%Server{apis: server_apis, api_plugins: server_plugins}, apis) do
+    apis
     |> Enum.map(fn %Api{name: name} = api ->
-      unless Enum.find(current_apis, &(Map.get(&1, "name") == name)) do
+      unless Enum.find(server_apis, &(Map.get(&1, "name") == name)) do
         Kong.create(api)
         Enum.map(api.plugins, &Kong.create(api, &1))
       end
     end)
   end
 
-  defp update_apis(current_apis, current_plugins, new_apis) do
-    current_apis
-    |> Enum.map(fn current_api ->
-      name = current_api["name"]
+  defp update_apis(%Server{apis: server_apis, api_plugins: server_plugins}, apis) do
+    server_apis
+    |> Enum.map(fn server_api ->
+      name = server_api["name"]
 
-      case Enum.find(new_apis, &(Map.get(&1, :name) == name)) do
-        %Api{} = new_api ->
-          if compare_apis(new_api, current_api), do: :ok, else: Kong.update(new_api)
-          current_api_plugins = Enum.filter(current_plugins, &(Map.get(&1, "api_id") == current_api["id"]))
-          delete_api_plugins(new_api, current_api_plugins)
-          create_and_update_api_plugins(new_api, current_api_plugins)
+      case Enum.find(apis, &(Map.get(&1, :name) == name)) do
+        %Api{} = api ->
+          if compare_apis(api, server_api), do: :ok, else: Kong.update(api)
+          server_api_plugins = Enum.filter(server_plugins, &(Map.get(&1, "api_id") == server_api["id"]))
+          delete_api_plugins(api, server_api_plugins)
+          create_and_update_api_plugins(api, server_api_plugins)
 
         nil ->
           :ok
@@ -43,28 +60,63 @@ defmodule Kongak.Processor do
     end)
   end
 
-  defp create_and_update_api_plugins(%Api{plugins: plugins} = api, current_api_plugins) do
-    Enum.map(plugins, fn plugin ->
-      case Enum.find(current_api_plugins, &(Map.get(&1, "name") == plugin.name)) do
-        nil ->
-          Kong.create(api, plugin)
+  defp delete_plugins(%Server{global_plugins: server_plugins}, plugins) do
+    server_plugins
+    |> Enum.map(fn plugin ->
+      name = plugin["name"]
 
-        %{"id" => plugin_id} = current_plugin ->
-          if compare_plugins(plugin, current_plugin), do: :ok, else: Kong.update(api, plugin, plugin_id)
+      unless Enum.find(plugins, &(Map.get(&1, :name) == name)) do
+        Kong.delete_plugin(plugin["id"])
       end
     end)
   end
 
-  defp delete_api_plugins(%Api{plugins: plugins}, current_api_plugins) do
-    Enum.map(current_api_plugins, fn current_plugin ->
-      case Enum.find(plugins, &(Map.get(&1, :name) == current_plugin["name"])) do
-        nil -> Kong.delete_plugin(current_plugin["id"])
+  defp create_plugins(%Server{global_plugins: server_plugins}, plugins) do
+    plugins
+    |> Enum.map(fn %Plugin{name: name} = plugin ->
+      unless Enum.find(server_plugins, &(Map.get(&1, "name") == name)) do
+        Kong.create(plugin)
+      end
+    end)
+  end
+
+  defp update_plugins(%Server{global_plugins: server_plugins}, plugins) do
+    server_plugins
+    |> Enum.map(fn server_plugin ->
+      name = server_plugin["name"]
+
+      case Enum.find(plugins, &(Map.get(&1, :name) == name)) do
+        %Plugin{} = plugin ->
+          if compare_plugins(plugin, server_plugin), do: :ok, else: Kong.update(plugin, server_plugin["id"])
+
+        nil ->
+          :ok
+      end
+    end)
+  end
+
+  defp create_and_update_api_plugins(%Api{plugins: plugins} = api, server_api_plugins) do
+    Enum.map(plugins, fn plugin ->
+      case Enum.find(server_api_plugins, &(Map.get(&1, "name") == plugin.name)) do
+        nil ->
+          Kong.create(api, plugin)
+
+        %{"id" => plugin_id} = server_plugin ->
+          if compare_plugins(plugin, server_plugin), do: :ok, else: Kong.update(api, plugin, plugin_id)
+      end
+    end)
+  end
+
+  defp delete_api_plugins(%Api{plugins: plugins}, server_api_plugins) do
+    Enum.map(server_api_plugins, fn server_plugin ->
+      case Enum.find(plugins, &(Map.get(&1, :name) == server_plugin["name"])) do
+        nil -> Kong.delete_plugin(server_plugin["id"])
         _ -> :ok
       end
     end)
   end
 
-  defp compare_apis(new_api, current_api) do
+  defp compare_apis(api, server_api) do
     attributes = ~w(
       hosts
       http_if_terminated
@@ -82,46 +134,35 @@ defmodule Kongak.Processor do
     )
 
     new_api =
-      new_api
+      api
       |> Jason.encode!()
       |> Jason.decode!()
       |> Map.take(attributes)
       |> Enum.filter(fn {_, v} -> !is_nil(v) end)
 
-    current_api =
-      current_api
+    server_api =
+      server_api
       |> Map.take(attributes)
       |> Enum.filter(fn {_, v} -> !is_nil(v) end)
 
-    new_api == current_api
+    new_api == server_api
   end
 
-  defp compare_plugins(new_plugin, current_plugin) do
+  defp compare_plugins(plugin, server_plugin) do
     attributes = ~w(name config enabled consumer_id)
 
     new_plugin =
-      new_plugin
+      plugin
       |> Jason.encode!()
       |> Jason.decode!()
       |> Map.take(attributes)
       |> Enum.filter(fn {_, v} -> !is_nil(v) end)
 
-    current_plugin =
-      current_plugin
+    server_plugin =
+      server_plugin
       |> Map.take(attributes)
       |> Enum.filter(fn {_, v} -> !is_nil(v) end)
 
-    new_plugin == current_plugin
-  end
-
-  defp delete_apis(current_apis, new_apis) do
-    current_apis
-    |> Enum.map(fn api ->
-      name = api["name"]
-
-      unless Enum.find(new_apis, &(Map.get(&1, :name) == name)) do
-        Kong.delete_api(name)
-      end
-    end)
+    new_plugin == server_plugin
   end
 end
