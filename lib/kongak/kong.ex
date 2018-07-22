@@ -4,6 +4,7 @@ defmodule Kongak.Kong do
   use HTTPoison.Base
   alias Kongak.Api
   alias Kongak.Cache
+  alias Kongak.Plugin
   require Logger
 
   @impl true
@@ -46,15 +47,27 @@ defmodule Kongak.Kong do
     end
   end
 
-  def get(:api, name), do: get!("/apis/#{name}")
-
   def create(%Api{} = api) do
     post!("/apis", Jason.encode!(api))
+  end
+
+  def create(%Plugin{} = plugin) do
+    post!("/plugins", Jason.encode!(plugin))
+  end
+
+  def create(%Api{name: name}, %Plugin{} = plugin) do
+    post!("/apis/#{name}/plugins", Jason.encode!(plugin))
   end
 
   def update(%Api{name: name} = api) do
     patch!("/apis/#{name}", Jason.encode!(api))
   end
 
-  def delete(:api, name), do: delete!("/apis/#{name}")
+  def update(%Api{name: name}, %Plugin{} = plugin, plugin_id) do
+    patch!("/apis/#{name}/plugins/#{plugin_id}", Jason.encode!(plugin))
+  end
+
+  def delete_api(name), do: delete!("/apis/#{name}")
+
+  def delete_plugin(id), do: delete!("/plugins/#{id}")
 end

@@ -13,6 +13,9 @@ defmodule Kongak do
     with {:ok, config} <- Config.parse(config) do
       Cache.set_config(config)
       Processor.process_apis(config)
+
+      IO.puts("")
+      IO.puts("#{IO.ANSI.green()}Done")
     else
       {:error, reason} -> error(reason)
     end
