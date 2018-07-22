@@ -5,7 +5,9 @@ defmodule Kongak do
   alias Kongak.Cache
   alias Kongak.Config
   alias Kongak.Kong
-  alias Kongak.Processor
+  alias Kongak.Processor.ApiProcessor
+  alias Kongak.Processor.CertificateProcessor
+  alias Kongak.Processor.PluginProcessor
   alias Kongak.Server
 
   def apply(args) do
@@ -17,9 +19,17 @@ defmodule Kongak do
       plugins = Kong.list(:plugin)
       api_plugins = Enum.filter(plugins, &Map.get(&1, "api_id"))
       global_plugins = Enum.filter(plugins, &is_nil(Map.get(&1, "api_id")))
-      server = %Server{apis: Kong.list(:api), api_plugins: api_plugins, global_plugins: global_plugins}
-      Processor.process_apis(config, server)
-      Processor.process_plugins(config, server)
+
+      server = %Server{
+        apis: Kong.list(:api),
+        api_plugins: api_plugins,
+        global_plugins: global_plugins,
+        certificates: Kong.list(:certificate)
+      }
+
+      ApiProcessor.process(config, server)
+      PluginProcessor.process(config, server)
+      CertificateProcessor.process(config, server)
 
       IO.puts("")
       IO.puts("#{IO.ANSI.green()}Done")

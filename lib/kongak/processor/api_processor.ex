@@ -1,24 +1,16 @@
-defmodule Kongak.Processor do
-  @moduledoc """
-  Kong api
-  """
+defmodule Kongak.Processor.ApiProcessor do
+  @moduledoc false
 
   alias Kongak.Api
   alias Kongak.Config
   alias Kongak.Kong
-  alias Kongak.Plugin
+  alias Kongak.Processor.PluginProcessor
   alias Kongak.Server
 
-  def process_apis(%Config{apis: apis}, %Server{} = server) do
+  def process(%Config{apis: apis}, %Server{} = server) do
     delete_apis(server, apis)
     create_apis(server, apis)
     update_apis(server, apis)
-  end
-
-  def process_plugins(%Config{plugins: plugins}, %Server{} = server) do
-    delete_plugins(server, plugins)
-    create_plugins(server, plugins)
-    update_plugins(server, plugins)
   end
 
   defp delete_apis(%Server{apis: server_apis}, apis) do
@@ -60,41 +52,6 @@ defmodule Kongak.Processor do
     end)
   end
 
-  defp delete_plugins(%Server{global_plugins: server_plugins}, plugins) do
-    server_plugins
-    |> Enum.map(fn plugin ->
-      name = plugin["name"]
-
-      unless Enum.find(plugins, &(Map.get(&1, :name) == name)) do
-        Kong.delete_plugin(plugin["id"])
-      end
-    end)
-  end
-
-  defp create_plugins(%Server{global_plugins: server_plugins}, plugins) do
-    plugins
-    |> Enum.map(fn %Plugin{name: name} = plugin ->
-      unless Enum.find(server_plugins, &(Map.get(&1, "name") == name)) do
-        Kong.create(plugin)
-      end
-    end)
-  end
-
-  defp update_plugins(%Server{global_plugins: server_plugins}, plugins) do
-    server_plugins
-    |> Enum.map(fn server_plugin ->
-      name = server_plugin["name"]
-
-      case Enum.find(plugins, &(Map.get(&1, :name) == name)) do
-        %Plugin{} = plugin ->
-          if compare_plugins(plugin, server_plugin), do: :ok, else: Kong.update(plugin, server_plugin["id"])
-
-        nil ->
-          :ok
-      end
-    end)
-  end
-
   defp create_and_update_api_plugins(%Api{plugins: plugins} = api, server_api_plugins) do
     Enum.map(plugins, fn plugin ->
       case Enum.find(server_api_plugins, &(Map.get(&1, "name") == plugin.name)) do
@@ -102,7 +59,7 @@ defmodule Kongak.Processor do
           Kong.create(api, plugin)
 
         %{"id" => plugin_id} = server_plugin ->
-          if compare_plugins(plugin, server_plugin), do: :ok, else: Kong.update(api, plugin, plugin_id)
+          if PluginProcessor.compare(plugin, server_plugin), do: :ok, else: Kong.update(api, plugin, plugin_id)
       end
     end)
   end
@@ -146,23 +103,5 @@ defmodule Kongak.Processor do
       |> Enum.filter(fn {_, v} -> !is_nil(v) end)
 
     new_api == server_api
-  end
-
-  defp compare_plugins(plugin, server_plugin) do
-    attributes = ~w(name config enabled consumer_id)
-
-    new_plugin =
-      plugin
-      |> Jason.encode!()
-      |> Jason.decode!()
-      |> Map.take(attributes)
-      |> Enum.filter(fn {_, v} -> !is_nil(v) end)
-
-    server_plugin =
-      server_plugin
-      |> Map.take(attributes)
-      |> Enum.filter(fn {_, v} -> !is_nil(v) end)
-
-    new_plugin == server_plugin
   end
 end

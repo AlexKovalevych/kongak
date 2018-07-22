@@ -9,9 +9,10 @@
 - [x] api CRUD operations
 - [x] api plugins CRUD operations
 - [ ] consumers
-- [ ] certificates
+- [x] certificates
 - [ ] upstreams
 - [x] global plugins
+- [ ] parallel requests
 
 ## Usage
 

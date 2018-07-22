@@ -4,6 +4,7 @@ defmodule Kongak.Kong do
   use HTTPoison.Base
   alias Kongak.Api
   alias Kongak.Cache
+  alias Kongak.Certificate
   alias Kongak.Plugin
   require Logger
 
@@ -47,12 +48,27 @@ defmodule Kongak.Kong do
     end
   end
 
+  def list(:certificate, certificates, offset) do
+    url = if !offset, do: "/certificates", else: "/certificates?offset=#{offset}"
+
+    with %HTTPoison.Response{body: body} <- get!(url) do
+      case Jason.decode!(body) do
+        %{"offset" => offset, "data" => data} -> list(:certificate, certificates ++ data, offset)
+        %{"data" => data} -> certificates ++ data
+      end
+    end
+  end
+
   def create(%Api{} = api) do
     post!("/apis", Jason.encode!(api))
   end
 
   def create(%Plugin{} = plugin) do
     post!("/plugins", Jason.encode!(plugin))
+  end
+
+  def create(%Certificate{} = certificate) do
+    post!("/certificates", Jason.encode!(certificate))
   end
 
   def create(%Api{name: name}, %Plugin{} = plugin) do
@@ -74,4 +90,6 @@ defmodule Kongak.Kong do
   def delete_api(name), do: delete!("/apis/#{name}")
 
   def delete_plugin(id), do: delete!("/plugins/#{id}")
+
+  def delete_certificate(id), do: delete!("/certificates/#{id}")
 end
