@@ -10,9 +10,10 @@
 - [x] api plugins CRUD operations
 - [ ] consumers
 - [x] certificates
-- [ ] upstreams
+- [x] upstreams
 - [x] global plugins
 - [ ] parallel requests
+- [ ] add dry-run option
 
 ## Usage
 

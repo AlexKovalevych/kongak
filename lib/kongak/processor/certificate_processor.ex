@@ -18,22 +18,4 @@ defmodule Kongak.Processor.CertificateProcessor do
   defp create(certificates) do
     Enum.map(certificates, &Kong.create/1)
   end
-
-  # defp compare(certificate, server_certificate) do
-  #   attributes = ~w(cert key snis)
-
-  #   new_certificate =
-  #     certificate
-  #     |> Jason.encode!()
-  #     |> Jason.decode!()
-  #     |> Map.take(attributes)
-  #     |> Enum.filter(fn {_, v} -> !is_nil(v) end)
-
-  #   server_certificate =
-  #     server_certificate
-  #     |> Map.take(attributes)
-  #     |> Enum.filter(fn {_, v} -> !is_nil(v) end)
-
-  #   new_certificate == server_certificate
-  # end
 end

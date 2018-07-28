@@ -6,6 +6,8 @@ defmodule Kongak.Kong do
   alias Kongak.Cache
   alias Kongak.Certificate
   alias Kongak.Plugin
+  alias Kongak.Target
+  alias Kongak.Upstream
   require Logger
 
   @impl true
@@ -59,6 +61,31 @@ defmodule Kongak.Kong do
     end
   end
 
+  def list(:upstream, upstreams, offset) do
+    url = if !offset, do: "/upstreams", else: "/upstreams?offset=#{offset}"
+
+    with %HTTPoison.Response{body: body} <- get!(url) do
+      case Jason.decode!(body) do
+        %{"offset" => offset, "data" => data} -> list(:upstream, upstreams ++ data, offset)
+        %{"data" => data} -> upstreams ++ data
+      end
+    end
+  end
+
+  def list(:target, upstream_id, targets, offset) do
+    url =
+      if !offset,
+        do: "/upstreams/#{upstream_id}/targets",
+        else: "/upstreams/#{upstream_id}/targets?offset=#{offset}"
+
+    with %HTTPoison.Response{body: body} <- get!(url) do
+      case Jason.decode!(body) do
+        %{"offset" => offset, "data" => data} -> list(:target, upstream_id, targets ++ data, offset)
+        %{"data" => data} -> targets ++ data
+      end
+    end
+  end
+
   def create(%Api{} = api) do
     post!("/apis", Jason.encode!(api))
   end
@@ -71,12 +98,24 @@ defmodule Kongak.Kong do
     post!("/certificates", Jason.encode!(certificate))
   end
 
+  def create(%Upstream{} = upstream) do
+    post!("/upstreams", Jason.encode!(upstream))
+  end
+
   def create(%Api{name: name}, %Plugin{} = plugin) do
     post!("/apis/#{name}/plugins", Jason.encode!(plugin))
   end
 
+  def create(%Upstream{name: name}, %Target{} = target) do
+    post!("/upstreams/#{name}/targets", Jason.encode!(target))
+  end
+
   def update(%Api{name: name} = api) do
     patch!("/apis/#{name}", Jason.encode!(api))
+  end
+
+  def update(%Upstream{name: name} = upstream) do
+    patch!("/upstreams/#{name}", Jason.encode!(upstream))
   end
 
   def update(%Plugin{} = plugin, plugin_id) do
@@ -92,4 +131,8 @@ defmodule Kongak.Kong do
   def delete_plugin(id), do: delete!("/plugins/#{id}")
 
   def delete_certificate(id), do: delete!("/certificates/#{id}")
+
+  def delete_upstream(id), do: delete!("/upstreams/#{id}")
+
+  def delete_target(%Upstream{name: name}, id), do: delete!("/upstreams/#{name}/targets/#{id}") |> IO.inspect()
 end
