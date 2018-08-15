@@ -5,6 +5,7 @@ defmodule Kongak.Kong do
   alias Kongak.Api
   alias Kongak.Cache
   alias Kongak.Certificate
+  alias Kongak.Consumer
   alias Kongak.Plugin
   alias Kongak.Target
   alias Kongak.Upstream
@@ -72,6 +73,17 @@ defmodule Kongak.Kong do
     end
   end
 
+  def list(:consumer, consumers, offset) do
+    url = if !offset, do: "/consumers", else: "/consumers?offset=#{offset}"
+
+    with %HTTPoison.Response{body: body} <- get!(url) do
+      case Jason.decode!(body) do
+        %{"offset" => offset, "data" => data} -> list(:consumer, consumers ++ data, offset)
+        %{"data" => data} -> consumers ++ data
+      end
+    end
+  end
+
   def list(:target, upstream_id, targets, offset) do
     url =
       if !offset,
@@ -100,6 +112,18 @@ defmodule Kongak.Kong do
 
   def create(%Upstream{} = upstream) do
     post!("/upstreams", Jason.encode!(upstream))
+  end
+
+  def create(%Consumer{username: username, custom_id: custom_id, credentials: credentials} = consumer) do
+    post!("/consumers", Jason.encode!(consumer))
+
+    if credentials do
+      consumer_name = username || custom_id
+
+      Enum.map(credentials, fn value ->
+        post!("/consumers/#{consumer_name}/#{value.type}", Jason.encode!(value))
+      end)
+    end
   end
 
   def create(%Api{name: name}, %Plugin{} = plugin) do
@@ -133,6 +157,8 @@ defmodule Kongak.Kong do
   def delete_certificate(id), do: delete!("/certificates/#{id}")
 
   def delete_upstream(id), do: delete!("/upstreams/#{id}")
+
+  def delete_consumer(id), do: delete!("/consumers/#{id}")
 
   def delete_target(%Upstream{name: name}, id), do: delete!("/upstreams/#{name}/targets/#{id}") |> IO.inspect()
 end

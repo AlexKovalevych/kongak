@@ -7,6 +7,7 @@ defmodule Kongak do
   alias Kongak.Kong
   alias Kongak.Processor.ApiProcessor
   alias Kongak.Processor.CertificateProcessor
+  alias Kongak.Processor.ConsumerProcessor
   alias Kongak.Processor.PluginProcessor
   alias Kongak.Processor.UpstreamProcessor
   alias Kongak.Server
@@ -26,13 +27,15 @@ defmodule Kongak do
         api_plugins: api_plugins,
         global_plugins: global_plugins,
         certificates: Kong.list(:certificate),
-        upstreams: Kong.list(:upstream)
+        upstreams: Kong.list(:upstream),
+        consumers: Kong.list(:consumer)
       }
 
       ApiProcessor.process(config, server)
       PluginProcessor.process(config, server)
       CertificateProcessor.process(config, server)
       UpstreamProcessor.process(config, server)
+      ConsumerProcessor.process(config, server)
 
       IO.puts("")
       IO.puts("#{IO.ANSI.green()}Done")

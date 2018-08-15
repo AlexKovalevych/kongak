@@ -8,7 +8,7 @@
 - [x] Kong 0.13
 - [x] api CRUD operations
 - [x] api plugins CRUD operations
-- [ ] consumers
+- [x] consumers
 - [x] certificates
 - [x] upstreams
 - [x] global plugins
