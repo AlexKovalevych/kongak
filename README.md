@@ -12,7 +12,9 @@
 - [x] certificates
 - [x] upstreams
 - [x] global plugins
+- [ ] acl support
 - [ ] parallel requests
+- [ ] allow to dump config
 - [ ] add dry-run option
 
 ## Usage
@@ -25,7 +27,7 @@ You should have [elixir](https://elixir-lang.org/install.html) installed (at lea
 
 ## Config
 
-### **Warning! This library uses config file as a config state source, that means it will create, update and delete all apis and api plugins to make your server config match your config file.** ###
+### **Warning! This library uses config file as a config state source, that means it will create, update and delete all apis, targets, certificates, consumers to make your server config match your config file.** ###
 
 Config file should be in yaml format and can include several items (for now only `apis` is supported).
 
