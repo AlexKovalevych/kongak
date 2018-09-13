@@ -15,11 +15,7 @@ defmodule Kongak.Processor.ConsumerProcessor do
   Delete all consumers since we can't identify their credentials
   """
   def delete(%Server{consumers: server_consumers}) do
-    server_consumers
-    |> Enum.map(fn server_consumer ->
-      username_or_custom_id = server_consumer["username"] || server_consumer["custom_id"]
-      Kong.delete_consumer(username_or_custom_id)
-    end)
+    Enum.map(server_consumers, &Kong.delete_consumer(Map.get(&1, "id")))
   end
 
   @doc """
