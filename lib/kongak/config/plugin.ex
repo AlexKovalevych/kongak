@@ -3,5 +3,11 @@ defmodule Kongak.Plugin do
 
   @derive Jason.Encoder
 
-  defstruct ~w(name config enabled consumer_id)a
+  defstruct ~w(
+    name
+    config
+    enabled
+    consumer_id
+    service_id
+  )a
 end

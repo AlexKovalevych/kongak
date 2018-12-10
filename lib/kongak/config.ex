@@ -12,10 +12,23 @@ defmodule Kongak.Config do
   alias Kongak.Credentials.Oauth2
   alias Kongak.Consumer
   alias Kongak.Plugin
+  alias Kongak.Route
+  alias Kongak.Service
   alias Kongak.Target
   alias Kongak.Upstream
 
-  defstruct [:host, :port, :path, :data, :apis, :plugins, :certificates, :upstreams, :consumers]
+  defstruct ~w(
+    host
+    port
+    path
+    data
+    apis
+    plugins
+    certificates
+    upstreams
+    consumers
+    services
+  )a
 
   @doc """
   Yaml supported only
@@ -29,7 +42,8 @@ defmodule Kongak.Config do
            plugins: parse_plugins(data),
            certificates: parse_certificates(data),
            upstreams: parse_upstreams(data),
-           consumers: parse_consumers(data)
+           consumers: parse_consumers(data),
+           services: parse_services(data)
        }}
     end
   end
@@ -90,6 +104,25 @@ defmodule Kongak.Config do
     end)
   end
 
+  def parse_services(data) do
+    data
+    |> Map.get("services", [])
+    |> Enum.map(fn service ->
+      routes = Enum.map(Map.get(service, "routes", []), &parse_route/1)
+
+      routes =
+        Enum.map(routes, fn route ->
+          Map.put(route, :plugins, Enum.map(route.plugins, &parse_plugin/1))
+        end)
+
+      Service
+      |> create_struct(service)
+      |> Map.put(:routes, routes)
+      |> Map.put(:plugins, Enum.map(service["plugins"] || [], &parse_plugin/1))
+    end)
+  end
+
+  def parse_route(data), do: create_struct(Route, data)
   def parse_plugin(data), do: create_struct(Plugin, data)
   def parse_target(data), do: create_struct(Target, data)
 

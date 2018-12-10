@@ -7,6 +7,8 @@ defmodule Kongak.Kong do
   alias Kongak.Certificate
   alias Kongak.Consumer
   alias Kongak.Plugin
+  alias Kongak.Route
+  alias Kongak.Service
   alias Kongak.Target
   alias Kongak.Upstream
   require Logger
@@ -84,6 +86,28 @@ defmodule Kongak.Kong do
     end
   end
 
+  def list(:service, services, offset) do
+    url = if !offset, do: "/services", else: "/services?offset=#{offset}"
+
+    with %HTTPoison.Response{body: body} <- get!(url) do
+      case Jason.decode!(body) do
+        %{"offset" => offset, "data" => data} -> list(:service, services ++ data, offset)
+        %{"data" => data} -> services ++ data
+      end
+    end
+  end
+
+  def list(:route, routes, offset) do
+    url = if !offset, do: "/routes", else: "/routes?offset=#{offset}"
+
+    with %HTTPoison.Response{body: body} <- get!(url) do
+      case Jason.decode!(body) do
+        %{"offset" => offset, "data" => data} -> list(:route, routes ++ data, offset)
+        %{"data" => data} -> routes ++ data
+      end
+    end
+  end
+
   def list(:target, upstream_id, targets, offset) do
     url =
       if !offset,
@@ -126,6 +150,14 @@ defmodule Kongak.Kong do
     end
   end
 
+  def create(%Service{} = service) do
+    post!("/services", Jason.encode!(service))
+  end
+
+  def create(%Route{} = route) do
+    post!("/routes", Jason.encode!(route))
+  end
+
   def create(%Api{name: name}, %Plugin{} = plugin) do
     post!("/apis/#{name}/plugins", Jason.encode!(plugin))
   end
@@ -140,6 +172,10 @@ defmodule Kongak.Kong do
 
   def update(%Upstream{name: name} = upstream) do
     patch!("/upstreams/#{name}", Jason.encode!(upstream))
+  end
+
+  def update(%Service{name: name} = service) do
+    patch!("/services/#{name}", Jason.encode!(service))
   end
 
   def update(%Plugin{} = plugin, plugin_id) do
@@ -160,5 +196,7 @@ defmodule Kongak.Kong do
 
   def delete_consumer(id), do: delete!("/consumers/#{id}")
 
-  def delete_target(%Upstream{name: name}, id), do: delete!("/upstreams/#{name}/targets/#{id}") |> IO.inspect()
+  def delete_target(%Upstream{name: name}, id), do: delete!("/upstreams/#{name}/targets/#{id}")
+
+  def delete_service(name), do: delete!("/services/#{name}")
 end

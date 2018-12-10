@@ -1,7 +1,6 @@
 defmodule Kongak.Processor.CertificateProcessor do
   @moduledoc false
 
-  alias Kongak.Certificate
   alias Kongak.Config
   alias Kongak.Kong
   alias Kongak.Server

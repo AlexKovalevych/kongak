@@ -24,7 +24,7 @@ defmodule Kongak.Processor.ApiProcessor do
     end)
   end
 
-  defp create_apis(%Server{apis: server_apis, api_plugins: server_plugins}, apis) do
+  defp create_apis(%Server{apis: server_apis}, apis) do
     apis
     |> Enum.map(fn %Api{name: name} = api ->
       unless Enum.find(server_apis, &(Map.get(&1, "name") == name)) do
